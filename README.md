@@ -1,100 +1,100 @@
-# 3-Statements-Ultra — Public Edition
+# 3-Statements-Ultra — 公开版
 
-**English** | [中文](README.zh.md)
+[English](README.en.md) | **中文**
 
-**Version:** 6.0 · Public Edition
-**Build date:** May 2026 — v6.0 adds **R12 Revenue_Build** (quarterly forecasting + inline assumption mirrors + 3 new QC checks) on top of v5.0's three-layer defense system
-**Compatibility:** Claude Code / Cowork (Anthropic)
-
----
-
-## What This Skill Does
-
-Builds a complete, institutional-grade **three-statement financial model** (Income Statement, Balance Sheet, Cash Flow Statement) in Excel from scratch — with full formula linkage, zero hardcoded forecast cells, and a **19-check QC gate suite enforced at the end of every session**.
-
-Output quality targets: IPO prospectus / equity research initiating coverage.
-
-Key features:
-- **CN GAAP / IFRS / US GAAP** — all three accounting standards supported
-- **Quarterly / Semi-annual / Annual** granularity auto-detected from source data
-- **Formula-only forecasts** — every IS/BS/CF cell is an Excel formula, never a hardcoded number
-- **State persistence** — 5-session build with full resume-after-interruption support; state stored in a `state.json` sidecar file (auto-migrates from legacy in-xlsx `_State` sheet)
-- **19 QC checks with BLOCKER / WARNING severity tiers** — BS / CF / NI / REV reconciliation, forecast-cell hardcode scan, NCI continuity, formula integrity, R3 Others/CFO dual-threshold, BS Cash back-fill, segment-sum vs Total Revenue, WC days sanity, tax rate consistency, format/gridlines/font/zoom checks, Summary linkage, and more
-- **Preventive PreToolUse hooks** (optional, Claude Code only) — Rule Zero hardcode interception, RAW_MAP spot-check, unit/granularity prerequisite enforcement, A-share/US ticker → Quarterly enforcement
-- **Per-session gate enforcement** — each session ends with a `per_session_gate.py` call that writes a durable `GATE_<X>_PASSED` marker only if QC subset passes; next session refuses to start without the previous marker
-- **Data registry** — built-in lineage tracking for every input and derived number
+**版本：** 6.0 · 公开版
+**发布日期：** 2026年5月 — v6.0 新增 **R12 Revenue_Build**（季度预测架构 + inline assumption mirrors + 3 项新 QC），基于 v5.0 三层防御体系
+**兼容平台：** Claude Code / Cowork（Anthropic）
 
 ---
 
-## Prerequisites
+## 这个 Skill 做什么
+
+从零开始，在 Excel 中构建机构级**三表财务模型**（利润表、资产负债表、现金流量表）——所有预测单元格均为 Excel 公式（零硬编码），**每个 Session 末尾跑 19 项 QC gate 强制验证**。
+
+输出质量目标：IPO 招股书 / 卖方研究 initiating coverage 级别。
+
+核心特性：
+- **中国准则 / IFRS / US GAAP** — 三套会计准则全部支持
+- **季报 / 半年报 / 年报** 颗粒度自动识别
+- **全公式预测** — IS/BS/CF 每一个预测单元格均为引用 Assumptions 的 Excel 公式，永不硬编码
+- **断点续跑** — 5 个 Session 独立构建，支持随时中断、下次接着跑；状态保存在 `state.json` sidecar 文件中（自动从 xlsx 内的 `_State` sheet 迁移）
+- **19 项 QC 检查 + BLOCKER/WARNING 分级** — BS / CF / NI / REV 数值重算、预测单元格硬编码扫描、NCI 连续性、公式完整性、R3 Others/CFO 双阈值、BS 现金回填、Σ(segments) = 营收、WC days 合理性、税率一致性、格式/网格线/字体/缩放检查、Summary 链接等
+- **预防性 PreToolUse hook**（可选，仅 Claude Code 支持）— Rule Zero 硬编码拦截、RAW_MAP spot-check、unit/granularity 前置校验、A 股/美股 ticker → Quarterly 强制
+- **Session 末尾 gate 强制** — 每个 Session 结束调用 `per_session_gate.py`，QC 子集通过才写入 `GATE_<X>_PASSED` 标记；下一 Session 缺少前置标记拒绝启动
+- **数据台账** — 每个输入值和派生值均记录来源与公式链路
+
+---
+
+## 环境依赖
 
 ```bash
 pip install openpyxl yfinance pandas
-pip install "notebooklm-py[browser]" && playwright install chromium   # optional — only if you use NotebookLM as a data source (see "Recommended — Upgrade NLM" below)
+pip install "notebooklm-py[browser]" && playwright install chromium   # 可选 — 仅在使用 NotebookLM 作为数据源时需要（见下方"推荐升级 — NLM"）
 ```
 
-Python 3.9+ required.
+需要 Python 3.9+。
 
 ---
 
-## Installation
+## 安装方式
 
-The repo ships the skill in two forms: an unzipped `3-statements-ultra/` folder (for Claude Code) and a `3-statements-ultra-public.skill` zip bundle (for Cowork). Pick whichever matches your client.
+仓库同时提供两种形态：解压后的 `3-statements-ultra/` 文件夹（给 Claude Code 用）和 `3-statements-ultra-public.skill` zip 包（给 Cowork 用）。挑对应你客户端的那一种即可。
 
-### Claude Code — recommended (`git clone` + symlink)
+### Claude Code — 推荐（git clone + 软链接）
 
-This is the most convenient path: `git pull` picks up future updates automatically, no re-install needed.
+这是最省心的路径：之后 `git pull` 就能自动拿到最新版本，不需要重装。
 
 ```bash
-# 1. Clone anywhere you like (not inside ~/.claude/skills/)
+# 1. 在任意位置 clone 仓库（不要直接 clone 到 ~/.claude/skills/ 里）
 git clone https://github.com/willpowerju-lgtm/3-statement-ultra-for-finance.git
 cd 3-statement-ultra-for-finance
 
-# 2. Symlink the skill folder into Claude Code's skills directory
-# Linux / macOS:
+# 2. 把 skill 文件夹软链接到 Claude Code 的 skills 目录
+# Linux / macOS：
 ln -s "$PWD/3-statements-ultra" ~/.claude/skills/3-statements-ultra
 
-# Windows (PowerShell — needs admin OR Developer Mode enabled):
+# Windows（PowerShell，需要管理员身份 或 启用开发者模式）：
 New-Item -ItemType SymbolicLink -Path "$HOME\.claude\skills\3-statements-ultra" -Target "$PWD\3-statements-ultra"
 ```
 
-**Verify Claude Code picked it up:**
+**验证 Claude Code 已识别：**
 
 ```bash
-# In any Claude Code session:
+# 在任意 Claude Code session 里：
 /skills
-# Expected: "3-statements-ultra" appears in the list
+# 期望在列表中看到："3-statements-ultra"
 ```
 
-Then just trigger it from any session:
+然后在任意 session 触发即可：
 
 ```
 建个三表模型 for BABA
-# or
+# 或
 build a 3-statement model for Tencent (0700.HK)
 ```
 
-**Updating later:** `cd 3-statement-ultra-for-finance && git pull` — the symlink means Claude Code sees the new version immediately.
+**后续更新：** `cd 3-statement-ultra-for-finance && git pull` —— 因为是软链接，Claude Code 立刻能看到新版本。
 
-### Claude Code — alternative (plain copy, no symlink)
+### Claude Code — 替代方案（直接拷贝，不用软链接）
 
-If you can't or don't want to create symlinks:
+如果你的环境不方便建软链接：
 
 ```bash
 git clone https://github.com/willpowerju-lgtm/3-statement-ultra-for-finance.git
 cp -r 3-statement-ultra-for-finance/3-statements-ultra ~/.claude/skills/
 ```
 
-You'll need to re-copy when the skill updates.
+更新时需要重新 cp 覆盖。
 
-### Cowork (`.skill` zip bundle)
+### Cowork（.skill zip 包）
 
-1. Download `3-statements-ultra-public.skill` from this repo (raw file or Releases).
-2. In Cowork: **Settings → Skills → Install from file** → select the `.skill` file.
+1. 从本仓库（raw 文件或 Releases）下载 `3-statements-ultra-public.skill`。
+2. Cowork 中：**Settings → Skills → Install from file** → 选择 `.skill` 文件。
 
-### Manual unzip (legacy Claude Code path)
+### 手动解压（旧版 Claude Code 路径）
 
-Still works if you prefer a zip over the folder:
+如果你更喜欢解压 zip 而不是用文件夹：
 
 ```bash
 unzip 3-statements-ultra-public.skill -d ~/.claude/skills/3-statements-ultra/
@@ -102,36 +102,36 @@ unzip 3-statements-ultra-public.skill -d ~/.claude/skills/3-statements-ultra/
 
 ---
 
-## Recommended Setup — User Preference
+## 建议配置 — User Preference
 
-**Before your first session**, add the Compaction Recovery Protocol below to your Claude user preferences. This prevents state loss if context compaction fires *mid-session* — skill auto-load only re-injects SKILL.md when a trigger phrase hits, so a compaction that happens while you're already deep in the model won't re-load it on its own. Without this protocol, the LLM may try to rebuild row numbers from memory and silently corrupt the model.
+**第一次使用前**，把下面这段"断点恢复协议"贴进 Claude 用户偏好。这是为了防止建模**中途**触发 context compaction 后状态丢失——skill auto-load 只在触发词命中时重新注入 SKILL.md，已经在建模中途发生的 compaction 不会自动重载。没有这段协议，LLM 可能凭记忆拼行号、静默污染模型。
 
-Where to paste it depends on your client:
+粘贴位置因客户端而异：
 
-- **Claude Code** → append to `~/.claude/CLAUDE.md` (or a project-level `CLAUDE.md`).
-- **Cowork** → Settings → Profile → Custom Instructions.
-- **Claude.ai** (web/desktop) → Settings → Profile → Custom Instructions.
+- **Claude Code** → 追加到 `~/.claude/CLAUDE.md`（或你在用的项目级 `CLAUDE.md`）。
+- **Cowork** → Settings → Profile → Custom Instructions。
+- **Claude.ai**（网页/桌面）→ Settings → Profile → Custom Instructions。
 
 ```
-## 3-Statements-Ultra — Compaction Recovery Protocol
-When I am building a 3-statement financial model using the 3-statements-ultra skill,
-after ANY context compaction event, you MUST:
-1. Re-read the 3-statements-ultra SKILL.md before writing any code
-2. Read the state.json sidecar (auto-migrates from legacy _State sheet) — determine exact resume point
-3. Read _model_log.md — recover prior session outputs (key totals, check results)
-4. Read _pending_links.json — check if BS→CF back-fill is pending
-5. Run RAW_MAP + ASM_MAP spot-check before using any row numbers (H2 hook does this automatically when you reference the maps)
-6. Never hardcode any IS/BS/CF forecast cell — every cell must be a string formula (H1 hook will block this before bash executes)
-7. Resume from the next incomplete step only — never re-run completed sections
-Do not rely on conversation memory for row numbers or intermediate calculation results.
-Disk state (state.json, _model_log.md, _pending_links.json) is always authoritative.
+## 3-Statements-Ultra — 断点恢复协议
+当我在使用 3-statements-ultra skill 构建三表模型时，
+每次发生 context compaction 后，你必须：
+1. 重新读取 3-statements-ultra SKILL.md，再写任何代码
+2. 读取 state.json sidecar（自动从 xlsx 内的 _State sheet 迁移），确认精确的恢复点
+3. 读取 _model_log.md，恢复上一 session 的关键输出数字
+4. 读取 _pending_links.json，检查 BS→CF 的 Cash 回填是否待处理
+5. 用 RAW_MAP + ASM_MAP spot-check 验证行号，再使用任何行号（H2 hook 会在你引用 map 时自动 spot-check）
+6. IS/BS/CF 预测列单元格不得硬编码，每个单元格必须是字符串公式（H1 hook 会在 bash 执行前拦截）
+7. 只从下一个未完成步骤继续，不重跑已完成的部分
+不得依赖对话记忆来还原行号或中间计算结果。
+磁盘状态（state.json、_model_log.md、_pending_links.json）永远是权威来源。
 ```
 
 ---
 
-## Quick Start
+## 快速开始
 
-Just say one of these trigger phrases and the skill takes over:
+说出以下任意触发词，Skill 自动接管：
 
 ```
 三表模型
@@ -139,286 +139,261 @@ financial model
 3-statement model
 建模
 从零建模
-build a 3-statement model for [company name]
+build a 3-statement model for [公司名]
 ```
 
-The skill will ask you which data sources you have available, then guide you through the 5 sessions.
+Skill 会先问你有哪些数据来源，然后引导你逐步完成 5 个 Session。
 
 ---
 
-## 5-Session Build Flow
+## 五个 Session 构建流程
 
-| Session | Tab(s) Built | What Happens | Time |
-|---------|-------------|--------------|------|
-| **A** | Raw_Info + Assumptions | Data extraction from NLM / Excel / Web; granularity detection; assumptions setup | 15–30 min |
-| **B** | IS | Income Statement, all segments, CN GAAP R8 plug, NCI | 15–20 min |
-| **C** | BS | Balance Sheet, Cash as placeholder; writes `_pending_links.json` | 15–20 min |
-| **D** | CF | Cash Flow, year-by-year; R3 Others plug; BS Cash back-fill; 9 QC checks | 15–25 min |
-| **E** | Returns + Cross_Check + Summary | ROIC/ROE/DuPont; assumption validation; linked Summary tab | 15–20 min |
+| Session | 构建内容 | 做什么 | 时间 |
+|---------|---------|--------|------|
+| **A** | Raw_Info + Assumptions | 数据提取（NLM / Excel / Web）；颗粒度识别；假设参数设置 | 15–30 分钟 |
+| **B** | IS（利润表） | 各业务线收入、中国准则 R8 插项、少数股东损益 | 15–20 分钟 |
+| **C** | BS（资产负债表） | 资产负债表，货币资金暂为占位符；写入 `_pending_links.json` | 15–20 分钟 |
+| **D** | CF（现金流量表） | 逐年构建现金流；R3 Others 插项；BS 货币资金回填；9 项 QC 检查 | 15–25 分钟 |
+| **E** | Returns + Cross_Check + Summary | ROIC/ROE/DuPont；假设交叉验证；Summary Tab 链接 | 15–20 分钟 |
 
-Each session is **fully independent** — you can close the chat between sessions. State is stored in the Excel `_State` tab and two sidecar files (`_model_log.md`, `_pending_links.json`).
+每个 Session **完全独立** — Session 之间可以关闭对话。状态保存在 Excel 的 `_State` Tab 和两个辅助文件（`_model_log.md`、`_pending_links.json`）中。
 
 ---
 
-## Data Sources
+## 数据来源选择
 
-| Priority | Source | Setup | Token Cost | Notes |
-|----------|--------|-------|-----------|-------|
-| ✅ **1st choice** | **Excel** (historical IS/BS/CF already structured) | None | Low | Fastest to start — upload and go |
-| ✅ **2nd choice** | **NotebookLM notebook** (annual reports / filings pre-loaded) | Two steps (see below) | Very low | Higher assumption quality — worth the setup |
-| ✅ **Fallback** | **Web** (Sina / Yahoo Finance) | None | Low | Automatic — always runs as cross-check layer |
-| ⚠️ **Avoid on Pro** | **Full PDF upload** (complete annual report, prospectus) | None | 🔴 Very high | 200+ page filings consume context fast |
+| 优先级 | 来源 | 配置成本 | Token 消耗 | 说明 |
+|--------|------|---------|-----------|------|
+| ✅ **首选** | **Excel 历史数据**（IS/BS/CF 已整理） | 无 | 低 | 开箱即用，上传即开始 |
+| ✅ **次选** | **NotebookLM notebook**（已上传年报/财报） | 两步配置（见下方） | 极低 | 预测假设质量更高，值得配置 |
+| ✅ **兜底** | **Web**（Sina / Yahoo Finance） | 无 | 低 | 自动运行，始终作为交叉验证层 |
+| ⚠️ **Pro 用户慎用** | **直接上传完整 PDF**（年报、招股书全文） | 无 | 🔴 极高 | 200+ 页报告快速消耗 Context |
 
-**Why Excel first?** No auth, no pre-loading — just upload a spreadsheet with 3–5 years of IS/BS/CF and the skill reads it directly. Supplement with short PDF excerpts (earnings release key pages) if you have them.
+**为什么 Excel 首选？** 不需要认证，不需要预载——直接上传一份包含 3–5 年 IS/BS/CF 的表格，Skill 直接读取。如果你有业绩发布、关键页摘录等短篇 PDF，一并上传作为补充。
 
-**Why NLM second — and why it's worth it?** NotebookLM's 12-question parallel batch extracts far richer operational intelligence than structured financials alone: segment drivers, management guidance, capex plans, working capital commentary, competitive dynamics. This directly feeds the Assumptions tab, resulting in meaningfully better forecast quality. The tradeoff is a two-step setup:
+**为什么 NLM 次选，又说值得配置？** NotebookLM 的 12 题并发问答能提取远比结构化财务数据丰富得多的运营情报：分业务线拆分驱动因子、管理层指引原话、资本开支计划、营运资本管理逻辑、竞争格局分析。这些内容直接决定 Assumptions Tab 的质量，最终影响预测的可信度。代价是需要两步配置：
 
-1. **Upload your filings into NotebookLM first** — annual reports, quarterly reports, prospectus, or any sell-side research you find useful. NLM handles the PDF parsing so Claude never has to read the raw files.
-2. **One-time OAuth auth** (~5 min, done once). We use [teng-lin/notebooklm-py](https://github.com/teng-lin/notebooklm-py) — an unofficial Python client for NotebookLM:
+1. **先自己往 NotebookLM 上传资料** — 年报、季报、招股书，或任何你认为有参考价值的卖方研报。NLM 负责解析 PDF，Claude 只需接收问答结果，不用直接处理原始文件。
+2. **一次性 OAuth 认证**（约 5 分钟，只需做一次）。我们使用 [teng-lin/notebooklm-py](https://github.com/teng-lin/notebooklm-py) —— 一个非官方的 NotebookLM Python 客户端：
 
 ```bash
 pip install "notebooklm-py[browser]"
 playwright install chromium
 
-# CLI auth — browser opens, Google login, session saved locally
+# CLI 认证 — 浏览器弹出，Google 登录，session 本地保存
 notebooklm login
 
-# Verify it works
+# 验证是否可用
 python3 -c "
 import asyncio
 from notebooklm import NotebookLMClient
 async def check():
     async with await NotebookLMClient.from_storage() as client:
         nbs = await client.notebooks.list()
-        print(f'Auth OK — {len(nbs)} notebooks accessible')
+        print(f'认证成功 — 可访问 {len(nbs)} 个 notebook')
 asyncio.run(check())
 "
-# Re-auth when session expires (~7 days) by re-running `notebooklm login`
+# 约 7 天后 session 过期，重新执行 `notebooklm login` 即可
 ```
 
-> ⚠️ `notebooklm-py` is unofficial and relies on undocumented Google APIs that may change without notice. It's fine for personal research / prototyping (which is our use case here), but don't build production pipelines on it.
+> ⚠️ `notebooklm-py` 是非官方库，依赖未公开的 Google API，接口可能随时变动。用来做个人研究/原型没问题（本 skill 就是这个场景），不要拿它跑生产管线。
 
 ---
 
-## Output — Excel File Structure
+## 输出 Excel 文件结构
 
 ```
-[1] Summary        ← business profile, financial highlights, catalysts, risks
-[2] Assumptions    ← all forecast drivers (single source of truth)
-[3] IS             ← Income Statement
-[4] BS             ← Balance Sheet
-[5] CF             ← Cash Flow (indirect method)
-[6] Returns        ← ROIC / ROE / ROA / DuPont
-[7] Cross_Check    ← assumption validation log vs external sources
-[8] Raw_Info       ← extracted historical data (never re-read after build)
-[_Registry]        ← data lineage registry (built in Session E)
+[1] Summary        ← 公司简介、财务亮点、催化剂、风险
+[2] Assumptions    ← 所有预测驱动因子（唯一数据源）
+[3] IS             ← 利润表
+[4] BS             ← 资产负债表
+[5] CF             ← 现金流量表（间接法）
+[6] Returns        ← ROIC / ROE / ROA / DuPont 分析
+[7] Cross_Check    ← 假设参数与外部来源交叉验证日志
+[8] Raw_Info       ← 历史数据提取（建好后不再回读原始来源）
+[_Registry]        ← 数据来源台账（Session E 末尾构建）
 ```
 
-Sidecar files (alongside the xlsx in the same folder):
+Sidecar 文件（与 xlsx 同目录）：
 ```
-<model>.state.json            ← session metadata, GATE_<X>_PASSED markers, all
-                                row/column maps (replaces in-xlsx _State sheet
-                                as of v1.1; legacy _State auto-migrates)
-_model_log.md                 ← append-only checkpoint log of every tab section
-_pending_links.json           ← deferred BS->CF references (written by Session C,
-                                consumed and cleared by Session D)
-<model>.preflight.json        ← Session A gate sidecar report (8 PF checks)
-<model>.qc_<X>.json           ← Session B/C/D/E gate sidecar reports (QC findings)
+<model>.state.json            ← Session 元数据、GATE_<X>_PASSED 标记、所有
+                                row/column map（v1.1 起替代 xlsx 内的 _State sheet；
+                                旧版 _State sheet 自动迁移）
+_model_log.md                 ← append-only checkpoint log（每个 tab section 记录）
+_pending_links.json           ← BS->CF 延迟引用（Session C 写入，Session D 消费清零）
+<model>.preflight.json        ← Session A gate sidecar 报告（PF-1..8）
+<model>.qc_<X>.json           ← Session B/C/D/E gate sidecar 报告（QC findings）
 ```
 
 ---
 
-## v6.0 — What's New: R12 Revenue_Build
+## v6.0 新增：R12 Revenue_Build
 
-**Problem solved:** In multi-segment models, Revenue_Build tabs (Vol × ASP per sub-brand) were commonly built but never wired into IS — sitting as orphan reconciliation tables while IS forecast Revenue used Assumptions YoY% directly. This breaks when the bottom-up build disagrees with the top-down YoY.
+**解决的问题：** 多 segment 模型中，Revenue_Build tab（Vol × ASP 自下而上搭建）常常沦为孤儿核对表 — IS forecast Revenue 直接走 Assumptions YoY%，底部搭建和 IS 断层。
 
-**New in v6.0:**
+**v6.0 新功能：**
 
-| Feature | Description |
+| 功能 | 说明 |
 |---|---|
-| **SESSION A2** (conditional) | Builds `Revenue_Build` tab before IS. Triggered when ≥2 segments or vol×price disclosed. |
-| **Quarterly forecasting** | Forecast at Q level (Q YoY for mature, FY guide + ramp for new biz). FY = SUM(Q) — never the driver. |
-| **Inline ↳ pattern** | Forecast formulas reference same-sheet rows only. `↳` mirror rows are the sole cross-tab link to Assumptions. |
-| **QC-20** | Revenue_Build forecast cell integrity — blank/hardcode/text → BLOCKER. Q/FY aware. |
-| **QC-21** | IS forecast Revenue → Revenue_Build link — Q cells strict, FY/H1/H2 summary cells accept any formula. |
-| **QC-22** | Historical inline row completeness — BLOCKER if a computable implied ratio is blank. |
-| **`normalize_revenue_build()`** | Unified state normalizer handling string/bool/None for REVENUE_BUILD flag. |
-| **Scope filter** | `per_session_gate.py` only counts in-scope QCs per session (out-of-scope BLOCKERs deferred). |
+| **SESSION A2**（条件触发） | IS 之前搭建 Revenue_Build，≥2 segments 或有 vol×price 披露时默认开启 |
+| **季度预测架构** | Q 级别预测（成熟业务 Q YoY / 新业务 FY guide + ramp），FY = SUM(Q) |
+| **Inline ↳ pattern** | 预测公式只引同 sheet 行，↳ 行是唯一跨 tab link 到 Assumptions |
+| **QC-20** | Revenue_Build forecast 完整性 — 空白/硬编码/文本 → BLOCKER，Q/FY 感知 |
+| **QC-21** | IS forecast Revenue → Revenue_Build link — Q 严格，FY/H1/H2 接受任意公式 |
+| **QC-22** | Historical ↳ 行完整性 — 有 prior 但为空 → BLOCKER |
+| **Scope filter** | `per_session_gate.py` 按 session 权限范围计 QC findings，out-of-scope 延后 |
 
 ---
 
-## v5.0 Defense Layers
+## v5.0 防御层架构
 
-Three-layer architecture to catch model defects early. The further left a defect is caught, the less rework it costs.
+三层架构，越早抓住缺陷，返工成本越低。
 
-### Layer 1 — PreToolUse Hooks (optional, preventive)
+### Layer 1 — PreToolUse Hooks（可选，预防性）
 
-Four self-gated PreToolUse Bash hooks intercept common mistakes *before* the bash command runs:
+四个 self-gated PreToolUse Bash hook，在 bash 命令执行**前**拦截常见错误：
 
-| Hook | Catches | Why preventive matters |
+| Hook | 拦截 | 为什么是预防性 |
 |---|---|---|
-| `three_stmt_hardcode_guard.py` | `ws_is['E5'].value = 0.30` and alias variants (`ws = wb['IS']; ws['E5'].value = 0.30`) | Rule Zero violation — once written, entire forecast tab is dead |
-| `three_stmt_state_guard.py` | RAW_MAP / ASM_MAP row-number drift after Raw_Info or Assumptions is edited | Stale row maps silently corrupt session outputs |
-| `three_stmt_unit_guard.py` | Writes to Raw_Info before UNIT + IS_GRANULARITY are locked in state.json | Wrong unit = silent 100× error invisible until QC |
-| `three_stmt_granularity_guard.py` | A-share / US ticker set to non-Quarterly granularity | COL_MAP structure dependent on granularity — wrong choice = rebuild |
+| `three_stmt_hardcode_guard.py` | `ws_is['E5'].value = 0.30` 及别名变种（`ws = wb['IS']; ws['E5'].value = 0.30`）| Rule Zero 违反——一旦写入，整个 forecast 报废 |
+| `three_stmt_state_guard.py` | Raw_Info / Assumptions 编辑后 RAW_MAP / ASM_MAP 行号漂移 | 行号失配静默污染 session 输出 |
+| `three_stmt_unit_guard.py` | UNIT + IS_GRANULARITY 未锁就写 Raw_Info | 单位错 = 100× 静默错，QC 才发现 |
+| `three_stmt_granularity_guard.py` | A 股/美股 ticker 设非 Quarterly | COL_MAP 结构依赖颗粒度，错了要重建 |
 
-Hooks live in `3-statements-ultra/hooks/`. To enable on Claude Code, symlink or copy into `~/.claude/hooks/`:
+Hooks 位于 `3-statements-ultra/hooks/`。Claude Code 上启用方式：软链或拷贝到 `~/.claude/hooks/`：
 
 ```bash
 ln -sf "$PWD/3-statements-ultra/hooks/"three_stmt_*.py ~/.claude/hooks/
 ```
 
-Hooks are self-gated by context regex — they only fire when bash commands reference 3-statements-ultra concepts (RAW_MAP / Raw_Info / _State / IS_GRANULARITY / etc.). Other skills are unaffected.
+Hooks 通过 context regex 自门控——只在 bash 命令引用 3-statements-ultra 概念（RAW_MAP / Raw_Info / _State / IS_GRANULARITY 等）时触发，不影响其他 skill。
 
-### Layer 2 — Gate Scripts (detective, severity-tiered)
+### Layer 2 — Gate Scripts（侦测性，分级输出）
 
-Each session ends with `python scripts/per_session_gate.py --session <A|B|C|D|E> --xlsx <path>`. The gate writes a durable `GATE_<X>_PASSED` marker to `state.json` only if its QC subset returns BLOCKER=0. Next session refuses to start without the previous marker.
+每个 Session 末尾调用 `python scripts/per_session_gate.py --session <A|B|C|D|E> --xlsx <path>`。仅当 QC 子集返回 BLOCKER=0 时，gate 才往 `state.json` 写入 `GATE_<X>_PASSED` 标记。下一 Session 缺少前置标记拒绝启动。
 
-| Session | Gate runs | Writes on PASS |
+| Session | Gate 内容 | PASS 时写入 |
 |---|---|---|
-| **A** | `preflight_check.py` 8-item PF | `GATE_A_PASSED` |
-| **B** | `qc_suite.py --full --tabs IS` (QC-2/5/6/11/12/14/15/17) | `GATE_B_PASSED` |
-| **C** | `qc_suite.py --full --tabs BS` + `_pending_links.json` written | `GATE_C_PASSED` |
-| **D** | `qc_suite.py --full --tabs CF` (QC-1/2/3/4/6/13) + `_pending_links.json` cleared | `GATE_D_PASSED` |
-| **E** | `qc_suite.py --full --tabs all` (QC-1..19) + data-validator | `GATE_E_PASSED` then `MODEL_COMPLETE` |
+| **A** | `preflight_check.py` 8 项 PF | `GATE_A_PASSED` |
+| **B** | `qc_suite.py --full --tabs IS`（QC-2/5/6/11/12/14/15/17）| `GATE_B_PASSED` |
+| **C** | `qc_suite.py --full --tabs BS` + `_pending_links.json` 写入校验 | `GATE_C_PASSED` |
+| **D** | `qc_suite.py --full --tabs CF`（QC-1/2/3/4/6/13）+ `_pending_links.json` 清零校验 | `GATE_D_PASSED` |
+| **E** | `qc_suite.py --full --tabs all`（QC-1..19 全集）+ data-validator | `GATE_E_PASSED` 然后 `MODEL_COMPLETE` |
 
-Severity tiers (per `references/gate-spec.md`):
-- **BLOCKER** (exit 2) — durable marker not written; next session can't start
-- **WARNING** (exit 1) — marker written with `(with warnings)` suffix; session proceeds
-- **PASS** (exit 0) — clean
+严重度分级（详见 `references/gate-spec.md`）：
+- **BLOCKER**（exit 2）— durable marker 不写入，下一 Session 无法启动
+- **WARNING**（exit 1）— marker 写入但带 `(with warnings)` 后缀；Session 继续
+- **PASS**（exit 0）— 干净
 
-Session startup validates the previous gate's marker:
+Session 启动时校验前一 gate 标记：
 ```bash
 python scripts/per_session_gate.py --verify-prev --session B --xlsx <model.xlsx>
-# exit 0 if GATE_A_PASSED present; exit 2 otherwise
+# 存在 GATE_A_PASSED → exit 0；否则 exit 2 halt
 ```
 
 ### Layer 3 — Reference Docs
 
-| File | Contents |
+| 文件 | 内容 |
 |---|---|
-| `references/pitfalls.md` | 52-item pitfall index, each mapped to a Layer 1 hook or Layer 2 QC |
-| `references/gate-spec.md` | Severity rubric, JSON sidecar schema, exit-code conventions, implementation status |
-| `references/format-spec.md` | QC-14..19 format baseline (Book Antiqua, gridlines off, FF0070C0 input blue, accounting number formats) |
-| `references/registry-integration.md` | Detailed R11 Data Registry SOP for the final Session E acceptance step |
+| `references/pitfalls.md` | 52 项 pitfall 索引，每项映射到 Layer 1 hook 或 Layer 2 QC |
+| `references/gate-spec.md` | 严重度语义、JSON sidecar schema、退出码约定、实现状态 |
+| `references/format-spec.md` | QC-14..19 格式基准（Book Antiqua / gridlines off / FF0070C0 input 蓝 / accounting 数字格式）|
+| `references/registry-integration.md` | R11 Data Registry 完整 SOP（Session E 最终验收）|
 
 ---
 
-## Key Rules (Summary)
+## 核心规则（摘要）
 
-| Rule | Description |
-|------|-------------|
-| **Rule Zero** | Every IS/BS/CF forecast cell must be an Excel formula string — never a float or int |
-| **R3 Others plug** | Only permitted non-cash CF plug; keeps BS CHECK and CF CHECK both = 0 |
-| **R6 Cash last** | BS Cash is always 0 placeholder until SESSION D back-fills from CF Ending Cash |
-| **Code block limit** | Max 400 lines per Python block; execute before writing the next |
-| **One source** | After Raw_Info is complete, all data flows via `=Raw_Info!` links only |
-
----
-
-## Frequently Asked Questions
-
-**Q: Can I use this without NotebookLM?**
-Yes. NotebookLM is optional. If you don't have it, the skill falls back to Web (Sina / Yahoo Finance) as the primary data source.
-
-**Q: What if I only have annual data but the company reports quarterly?**
-The skill auto-detects granularity using yfinance. If quarterly data is available from any source, it uses quarterly. You can override with a manual answer during Phase 0.
-
-**Q: Can I pause mid-session and resume later?**
-Yes. Every code block writes a progress marker to the `_State` tab in Excel. The startup protocol at the beginning of each session automatically finds the last completed step and resumes from there.
-
-**Q: Why do I need to run 5 separate sessions instead of one?**
-Quarterly IS models produce 300+ lines of Python code per section. A single large script hits the LLM output cap and is silently truncated — the Excel file ends up partially written with no error. The 5-session, one-section-at-a-time approach prevents this entirely.
-
-**Q: What if BS CHECK ≠ 0 after Session C?**
-This is expected and correct. BS Cash is a placeholder (0) until Session D back-fills it from CF Ending Cash. Do not try to force-balance BS in Session C.
-
-**Q: Does this work for US GAAP companies (e.g., NYSE/NASDAQ-listed)?**
-Yes. Use `ticker = "TICKER"` format (e.g. `"AAPL"`) in Phase 0. The skill detects IFRS/US GAAP from the source and applies the correct IS template.
+| 规则 | 说明 |
+|------|------|
+| **Rule Zero** | IS/BS/CF 所有预测单元格必须是 Excel 公式字符串，不得为数字 |
+| **R3 Others 插项** | CFO 中唯一允许的非现金调整插项；同时保证 BS CHECK 和 CF CHECK 均为 0 |
+| **R6 Cash 最后** | BS 货币资金在 Session D 之前始终为 0 占位符，Session D 从 CF 期末现金回填 |
+| **代码块行数限制** | 每个 Python 代码块最多 400 行，执行后再写下一块 |
+| **单一来源** | Raw_Info 完成后，所有数据只通过 `=Raw_Info!` 公式引用，不再回读原始来源 |
 
 ---
 
-## What Was Removed in the Public Edition
+## 常见问题
 
-This is a sanitized version of the original private skill. The following have been removed or replaced:
+**Q：没有 NotebookLM 也能用吗？**
+可以。NotebookLM 是可选的。没有的话，Skill 自动降级到 Web（Sina / Yahoo Finance）作为主要数据源。
 
-- **Bark push notification module** — `bark-notify.md` and all `bark()` function calls removed. The original skill sent push notifications to a private device during long-running sessions; this is not needed for general use.
-- **Internal session paths** — hardcoded internal deployment paths (e.g. Python package install locations specific to the original environment) replaced with standard `pip install` instructions.
-- **`WorkflowState` / `SessionLog` integration blocks** — the original skill's top and bottom blocks hooked into an internal workflow/audit-log system (fixed paths under `/tmp/repo/session-log/src` and `~/.claude/skills/session-log/`). These have no meaning outside that environment and were removed. The 5-session build flow now stores state in a `state.json` sidecar file plus `_model_log.md` and `_pending_links.json`.
-- **Internal tickers in examples** — portfolio-specific tickers (e.g. A-share / HK names the original author was covering) replaced with neutral public-company tickers (`BABA`, `0700.HK`, `600519.SS`, `PDD`).
-- **Internal review attribution** — internal cross-model audit annotations stripped from code comments; the underlying defect fixes are kept.
+**Q：我只有年度数据，但公司按季度披露，怎么处理？**
+Skill 通过 yfinance 自动识别颗粒度。只要任何来源显示有季度数据，就使用季度模式。Phase 0 时也可以手动确认。
 
-What's **included** in v5.0 (was not in earlier public editions):
+**Q：Session 中途可以暂停、下次再继续吗？**
+可以。每个代码块执行后都会在 Excel 的 `_State` Tab 写入进度标记。每个 Session 启动时会自动找到上次完成的步骤并从下一步继续。
 
-- **`scripts/qc_suite.py`** — 19 QC checks (was 9 inline in session-e.md; now extracted to a callable script with BLOCKER/WARNING severity tiers and JSON sidecar output)
-- **`scripts/preflight_check.py`** — Session A 8-item PF gate
-- **`scripts/per_session_gate.py`** — session dispatcher + `GATE_<X>_PASSED` durable markers + `--verify-prev` startup check
-- **`scripts/state_io.py`** — state.json sidecar I/O with automatic migration from legacy in-xlsx `_State` sheet
-- **`hooks/three_stmt_*.py`** — 4 optional PreToolUse Bash hooks (Rule Zero / state spot-check / unit prereq / ticker granularity)
-- **`references/{pitfalls, gate-spec, format-spec, registry-integration}.md`** — full pitfall index, severity rubric + JSON schema, format baseline, and R11 Data Registry SOP
+**Q：为什么要跑 5 个 Session，不能一次跑完吗？**
+季报模式的利润表每个 Section 就有 300+ 行 Python 代码。一次性生成会触及大模型的输出上限，代码被静默截断，Excel 文件写到一半没有任何报错。5 个 Session 逐段执行完全规避了这个问题。
 
-All core modeling logic, templates, and session protocols are unchanged.
+**Q：Session C 结束后 BS CHECK ≠ 0，是 bug 吗？**
+不是，这是预期行为。货币资金在 Session D 之前是 0 占位符，Session D 从 CF 期末现金回填后 BS CHECK 才会归零。不要在 Session C 里强行平衡资产负债表。
+
+**Q：US GAAP 公司（纽交所/纳斯达克）也支持吗？**
+支持。Phase 0 中使用标准 ticker 格式（如 `"AAPL"`），Skill 会自动识别 IFRS/US GAAP 并套用对应的利润表模板。
 
 ---
 
-## vs. the Official `financial-analysis:3-statements` Skill
+## 与官方 `financial-analysis:3-statements` Skill 的对比
 
-There is an official 3-statement skill available in the Claude marketplace (`financial-analysis:3-statements`). The two skills serve different purposes and have meaningfully different quality standards. Here is an honest comparison.
+Claude 插件市场中有一个官方三表模型 Skill（`financial-analysis:3-statements`）。两者定位不同，质量标准差异显著。
 
-### What the official skill does well
+### 官方 Skill 的优势
 
-It is fast. If you already have a partially filled Excel template and just need the formulas linked up, the official skill does that job in a single session without setup. It works well for quick, rough-cut models where speed matters more than structural correctness.
+速度快。如果你已经有一个半填好的 Excel 模板，只需要把公式链接起来，官方 Skill 一个 Session 就能搞定，不需要任何配置。适合快速出一个粗略模型、对结构正确性要求不高的场景。
 
-### Where this skill differs — and why it matters for serious work
+### 本 Skill 的核心差异 — 为什么这些差异对严肃工作至关重要
 
-**1. Cash is never plugged.**
+**1. 货币资金永不倒推。**
 
-This is the most fundamental difference. The official skill calculates Cash by plugging: `Cash = Total Liabilities + Equity − Non-Cash Assets`. This forces the balance sheet to balance, but it is structurally wrong. Cash derived this way has no connection to actual cash generation — it is a residual that will be wildly incorrect whenever any other balance sheet item is even slightly off. In a real model, Cash must equal CF Ending Cash, derived from the full cash flow waterfall. This skill enforces that rule unconditionally: Cash is left as a placeholder in Session C and back-filled from the CF statement in Session D, period.
+这是最根本的结构差异。官方 Skill 用倒推法计算货币资金：`Cash = 负债合计 + 所有者权益 − 非现金资产`。这样资产负债表表面上平衡了，但结构上是错的。用这种方式算出来的货币资金和实际现金生成能力毫无关系——它只是一个残差，只要任何其他科目稍有偏差，这个数就会把所有偏差吸收进去，严重失真。正确的做法是，货币资金必须等于现金流量表的期末现金，由完整的现金流量瀑布推导得出。本 Skill 无条件强制执行这一规则：Session C 中货币资金保留为占位符，Session D 从现金流量表回填，没有例外。
 
-**2. Revenue is split by segment with independent drivers.**
+**2. 收入按业务线拆分，各自独立驱动。**
 
-The official skill treats revenue as a single line. This skill builds each business segment as an independently driven row — separate YoY growth %, separate volume × ASP structure if applicable, separate seasonality percentages for quarterly models. A single-line revenue assumption is adequate for a back-of-envelope; it is not adequate for an equity research or IC memo-quality model where you need to stress individual product lines or geography.
+官方 Skill 将收入作为一行处理。本 Skill 为每条业务线单独构建行，配有各自的 YoY 增速假设、量价拆分结构（如适用）以及季度模型的季节性比例。单行收入假设对于粗略估算尚可接受，但用于卖方研究或 IC Memo 时完全不够，因为你需要能单独压力测试各产品线或地区的表现。
 
-**3. Every forecast cell is an Excel formula — no exceptions.**
+**3. 所有预测单元格均为 Excel 公式，没有例外。**
 
-Rule Zero of this skill is that no forecast cell in IS/BS/CF may hold a hardcoded number. Every cell must be a string formula referencing the Assumptions tab or another cell. The official skill routinely writes numeric values directly into forecast cells, which means the model breaks silently the moment any assumption changes — the cell does not recalculate because it contains a number, not a formula.
+本 Skill 的 Rule Zero：IS/BS/CF 中没有任何预测单元格可以存数字。每个单元格必须是引用 Assumptions Tab 或其他单元格的字符串公式。官方 Skill 经常直接把数值写入预测单元格，这意味着一旦修改任何假设，受影响的单元格不会重新计算，因为它存的是数字不是公式。
 
-**4. CN GAAP is modelled natively.**
+**4. 原生支持中国会计准则。**
 
-Chinese GAAP income statements have items between 营业总成本 and 营业利润 (其他收益, 信用减值损失, 资产减值损失, etc.) that are not present in IFRS or US GAAP. This skill handles them with a dedicated R8 plug row that captures the residual between source 营业利润 and model-derived EBIT. Ignoring these items — as a generic template will — produces systematically wrong EBIT for A-share and HK-listed CN GAAP companies.
+中国会计准则利润表在"营业总成本"和"营业利润"之间存在若干科目（其他收益、信用减值损失、资产减值损失等），IFRS 和 US GAAP 中没有对应项。本 Skill 用专门的 R8 插项行来捕捉这部分差额——即来源中的营业利润与模型推导的 EBIT 之间的残差。用通用模板忽略这些科目，会导致 A 股和港股中国准则公司的 EBIT 系统性偏差。
 
-**5. Nineteen QC checks must pass before the model is marked complete (v5.0).**
+**5. 19 项 QC 检查必须全部通过，模型才能标记为完成（v5.0）。**
 
-The model cannot be finished without all 19 QCs passing: numeric reconciliation (BS CHECK, CF CHECK, NI CHECK, REV CHECK read from the model's own data_only-computed cells), forecast-cell hardcode scan, NCI continuity, formula integrity spot-check, _State 14-key integrity, R3 Others/CFO dual threshold (15% WARN / 30% BLOCKER), BS Cash back-fill, segment-sum vs Total Revenue equality, working-capital-days sanity vs 3-year historical average, effective tax rate consistency, R3 Others historical source check, and format/gridlines/font/number-format/zoom/freeze-panes checks. Each session ends with a gate that writes a durable marker only on PASS; the next session refuses to start without it. The official skill has no equivalent QC gate.
+没有通过全部检查，模型无法写入 MODEL_COMPLETE 状态：数值重算（BS CHECK、CF CHECK、NI CHECK、REV CHECK 从模型 data_only 计算值直接读取）、预测列硬编码扫描、NCI 连续性、公式完整性抽样、_State 14-key 完整性、R3 Others/CFO 双阈值（15% WARN / 30% BLOCKER）、BS 现金回填、Σ(segments) = 营收对账、营运资本天数 vs 3 年历史均值、有效税率一致性、R3 Others 历史来源、格式/网格线/字体/数字格式/缩放/冻结窗格检查。每个 Session 末尾跑 gate，PASS 才写入 durable marker；下一 Session 缺少标记拒绝启动。官方 Skill 没有对应的质量门控。
 
-**6. NCI is always rolled forward.**
+**6. 少数股东权益始终滚动计算。**
 
-If a company has minority interest, NCI on the balance sheet must compound each period: `NCI_end = NCI_prior + Attr_to_NCI − NCI_Dividends`. Setting forecast NCI to zero — or flat at the last historical value — is a common error that makes both the BS and the IS attribution wrong. This skill enforces the roll-forward and validates it in QC-5.
+如果公司存在少数股东，资产负债表上的少数股东权益必须每期复利累计：`NCI_期末 = NCI_期初 + 归属少数股东净利润 − 少数股东分红`。将预测期 NCI 设为零或直接用最后一期历史值延续是常见错误，会同时影响资产负债表和利润表中的归属计算。本 Skill 强制执行滚动公式，并在 QC-5 中验证。
 
-### Summary table
+### 对比表
 
-| | `3-statements-ultra` | `financial-analysis:3-statements` (official) |
+| | `3-statements-ultra`（本 Skill） | `financial-analysis:3-statements`（官方） |
 |---|---|---|
-| Cash derivation | `= CF Ending Cash` (always) | Plugged from BS residual |
-| Revenue structure | Per-segment, independent drivers | Single line |
-| Forecast cells | 100% Excel formulas | Mix of formulas and hardcodes |
-| CN GAAP support | Native (R8 plug, 营业利润 reconciliation) | Generic template |
-| QC validation | 19 mandatory checks with BLOCKER/WARNING tiers | None |
-| Preventive hooks | 4 PreToolUse hooks (Rule Zero, state, unit, granularity) | None |
-| Per-session gates | Each session writes durable marker; next session refuses to start without it | None |
-| NCI roll-forward | Enforced | Not guaranteed |
-| Quarterly granularity | Full (35 IS columns per year) | Annual only |
-| Setup required | 5 sessions, ~1–2 hours total | Single session |
-| Best for | IPO / equity research quality models | Quick template population |
+| 货币资金来源 | `= CF 期末现金`（始终如此） | 资产负债表残差倒推 |
+| 收入结构 | 按业务线拆分，各自独立驱动 | 单行 |
+| 预测单元格 | 100% Excel 公式 | 公式与硬编码混用 |
+| 中国准则支持 | 原生（R8 插项、营业利润对账） | 通用模板 |
+| QC 验证 | 19 项强制检查 + BLOCKER/WARNING 分级 | 无 |
+| 预防性 hook | 4 个 PreToolUse hook（Rule Zero、_State、unit、granularity）| 无 |
+| Session 末尾 gate | 每个 Session 写 durable marker，下一 Session 无标记拒绝启动 | 无 |
+| NCI 滚动计算 | 强制执行 | 不保证 |
+| 季度颗粒度 | 完整支持（每年 35 列） | 仅年度 |
+| 配置成本 | 5 个 Session，约 1–2 小时 | 单 Session |
+| 适用场景 | IPO / 卖方研究质量模型 | 快速填充模板 |
 
-### When to use which
+### 如何选择
 
-Use the official skill if you need a rough model in 20 minutes and the numbers do not need to hold up to scrutiny.
+如果你需要在 20 分钟内出一个粗略模型，数字不需要经得起推敲，用官方 Skill。
 
-Use this skill if the model will be used in an IC memo, a research note, an investor presentation, or any context where someone will actually check whether it balances — and whether the assumptions flow through correctly.
+如果模型将用于 IC Memo、研究报告、投资者材料，或者任何会被人仔细检查是否平衡、假设是否正确传导的场景，用本 Skill。
 
 ---
 
-## License
+## 许可证
 
-This skill is shared for personal and research use. No warranty is provided. Financial models produced by this skill should be independently verified before use in investment decisions.
+本 Skill 供个人和研究使用，不提供任何保证。由本 Skill 生成的财务模型在用于投资决策前，应经过独立核实。
